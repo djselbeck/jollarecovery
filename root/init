@@ -1,25 +1,31 @@
 #!/bin/sh
+# Minimal Android Debug initrd
+# 2013-10-21 Thomas Perl <m@thp.io>
 
 export PATH=/bin:/sbin
 
+
+# Mount basic file systems
 mount -t proc none /proc
 mount -t sysfs none /sys
 
-# Some indication that init is working
 echo 255 > /sys/class/leds/led:rgb_blue/brightness
 sleep 3
 
+# Prepare /dev
 mount -t tmpfs -o size=64k,mode=0755 tmpfs /dev
 mkdir /dev/pts
 mount -t devpts devpts /dev/pts
 
+# Populate /dev using Busybox mdev
 echo /sbin/mdev > /proc/sys/kernel/hotplug
 mdev -s
 
 sleep 3
 
-# Enable USB networking
+# Bring up USB Networking
 echo 0 > /sys/class/android_usb/android0/enable
+#echo 1 > /sys/class/android_usb/android0/f_rndis/on
 echo rndis > /sys/class/android_usb/android0/functions
 echo 1 > /sys/class/android_usb/android0/enable
 echo 0 > /sys/class/leds/led:rgb_blue/brightness
@@ -27,9 +33,12 @@ sleep 3
 
 # Configure USB Networking (IP address + DHCP server)
 ifconfig rndis0 192.168.42.17
-udhcpd
+udhcpd /etc/udhcpd.conf
 
 sleep 3
 
+# Start telnet service (to connect: telnet 192.168.2.17)
 echo 255 > /sys/class/leds/led:rgb_red/brightness
 telnetd -p 23 -l /bin/sh -F
+
+sleep 3600
